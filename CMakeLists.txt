@@ -20,3 +20,22 @@ target_include_directories(neuralnet_base INTERFACE
 
 # Result<T> = std::expected，需 C++23
 target_compile_features(neuralnet_base INTERFACE cxx_std_23)
+
+# ── 测试（NN_BUILD_TESTS；顶层工程默认 ON，被 add_subdirectory 消费时默认 OFF）──
+# 独立开发/CI：cmake -B build && cmake --build build && ctest --test-dir build
+option(NN_BUILD_TESTS "Build base.neuralnet.cpp tests" ${PROJECT_IS_TOP_LEVEL})
+if(NN_BUILD_TESTS)
+    enable_testing()
+    # 警告口径与门面仓一致：严格警告 + 零异常（测试代码同样守规）
+    if(MSVC)
+        add_compile_options(/W4 /permissive- /Zc:preprocessor /utf-8)
+    else()
+        add_compile_options(-fno-exceptions -Wall -Wextra -Wpedantic -Werror)
+    endif()
+
+    foreach(_t error_macro precision_type sha256 file assert)
+        add_executable(base_${_t}_test tests/${_t}_test.cpp)
+        target_link_libraries(base_${_t}_test PRIVATE neuralnet::base)
+        add_test(NAME base_${_t}_test COMMAND base_${_t}_test)
+    endforeach()
+endif()
