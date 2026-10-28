@@ -39,8 +39,14 @@ namespace nn
 }
 
 // ── 流式文件摘要（P2-1：整文件校验和 / 数据集身份）─────────────────────
-// 分块累加 sha256（1 MiB 块），不把文件读进内存；`limit_bytes` 限定只摘要
+// 分块累加 sha256（64 KiB 堆缓冲），不把文件读进内存；`limit_bytes` 限定只摘要
 // 文件前缀（整文件校验和要排除尾部的摘要本身）。文件不足 `limit_bytes` 时报错。
+//
+// 缓冲在**堆**上（v1.0.1，issue neuralnet.cpp#27）：原 1 MiB 栈上
+// std::array 在 Windows 默认 1 MiB 用户态线程栈上必溢出（表现为加载第一个
+// 参数前无信息 crash），下游曾被迫给每个可执行文件加 /STACK:8MiB。
+// 64 KiB 块对本地盘吞吐无感（SHA-256 update 才是热点），栈需求降到任意
+// 平台默认值之下。
 [[nodiscard]] inline Result<std::array<std::uint8_t, 32>> sha256_file_prefix(
     const std::string &path, std::uint64_t limit_bytes = ~std::uint64_t{0})
 {
@@ -49,7 +55,7 @@ namespace nn
         NN_FAIL("Cannot open file for hashing: " + path);
 
     detail::Sha256State st;
-    std::array<char, 1u << 20> buf{};
+    std::vector<char> buf(64u << 10);   // 堆分配；见上方 v1.0.1 说明
     std::uint64_t remain = limit_bytes;
     while (remain > 0)
     {
