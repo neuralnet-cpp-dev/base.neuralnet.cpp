@@ -24,16 +24,19 @@ int g_fail = 0;
 
 #include "test_common.hpp"
 
-namespace {
+namespace
+{
 
 constexpr int kSkip = -1;   // std::system 无法启动子进程
 
 std::string g_self;         // argv[0]：子进程自举用
 
-nn::Result<int> require_ok() { return 42; }
-nn::Result<int> require_bad() { return std::unexpected(nn::Error{"require failed"}); }
+nn::Result<int> require_ok()
+{ return 42; }
+nn::Result<int> require_bad()
+{ return std::unexpected(nn::Error{"require failed"}); }
 
-int run_self(const char *args)
+int run_self(const char* args)
 {
     const std::string cmd = "\"" + g_self + "\" " + args;
     const int rc = std::system(cmd.c_str());
@@ -57,13 +60,12 @@ int normalize_rc(int rc)
 }
 
 // 子进程 stderr 是否含全部给定子串（经 shell 重定向到临时文件后扫描）
-bool child_stderr_contains(const char *args, const std::string &needle)
+bool child_stderr_contains(const char* args, const std::string& needle)
 {
     const std::string err_path = "assert_test_child_stderr.txt";
     const std::string cmd = "\"" + g_self + "\" " + args + " 2> \"" + err_path + "\"";
-    if (std::system(cmd.c_str()) == -1)
-        return false;
-    std::FILE *f = std::fopen(err_path.c_str(), "rb");
+    if (std::system(cmd.c_str()) == -1) return false;
+    std::FILE* f = std::fopen(err_path.c_str(), "rb");
     if (!f) return false;
     std::string content;
     char buf[4096];
@@ -82,36 +84,29 @@ void test_assert_always_semantics()
     CHECK(true, "NN_ASSERT_ALWAYS 条件成立时不终止");
     // 失败路径（子进程）：非零退出 + stderr 带完整位置信息
     const int rc = normalize_rc(run_self("--expect-assert-always"));
-    if (rc != kSkip)
-        CHECK(rc != 0, "NN_ASSERT_ALWAYS 失败 → 非零退出");
-    CHECK(child_stderr_contains("--expect-assert-always",
-                                "NN_ASSERT_ALWAYS failed at"),
+    if (rc != kSkip) CHECK(rc != 0, "NN_ASSERT_ALWAYS 失败 → 非零退出");
+    CHECK(child_stderr_contains("--expect-assert-always", "NN_ASSERT_ALWAYS failed at"),
           "stderr 含 tag");
-    CHECK(child_stderr_contains("--expect-assert-always", "assert_test.cpp"),
-          "stderr 含文件名");
-    CHECK(child_stderr_contains("--expect-assert-always", "boom always"),
-          "stderr 含消息");
+    CHECK(child_stderr_contains("--expect-assert-always", "assert_test.cpp"), "stderr 含文件名");
+    CHECK(child_stderr_contains("--expect-assert-always", "boom always"), "stderr 含消息");
 }
 
 void test_fatal_semantics()
 {
     std::printf("NN_FATAL 语义:\n");
     const int rc = normalize_rc(run_self("--expect-fatal"));
-    if (rc != kSkip)
-        CHECK(rc != 0, "NN_FATAL → 非零退出");
-    CHECK(child_stderr_contains("--expect-fatal", "NN_FATAL failed at"),
-          "stderr 含 NNFATAL tag");
-    CHECK(child_stderr_contains("--expect-fatal", "boom fatal"),
-          "stderr 含消息");
+    if (rc != kSkip) CHECK(rc != 0, "NN_FATAL → 非零退出");
+    CHECK(child_stderr_contains("--expect-fatal", "NN_FATAL failed at"), "stderr 含 NNFATAL tag");
+    CHECK(child_stderr_contains("--expect-fatal", "boom fatal"), "stderr 含消息");
 }
 
 void test_assert_debug_semantics()
 {
     std::printf("NN_ASSERT 语义（当前构建 NDEBUG=%d）:\n",
 #ifdef NDEBUG
-        1
+                1
 #else
-        0
+                0
 #endif
     );
     // 两态共同：真条件不终止
@@ -120,8 +115,7 @@ void test_assert_debug_semantics()
 #ifndef NDEBUG
     // Debug：失败即 abort（abort 可能表现为信号或非零退出，统一 != 0）
     const int rc = normalize_rc(run_self("--expect-assert"));
-    if (rc != kSkip)
-        CHECK(rc != 0, "Debug 下 NN_ASSERT 失败 → 非零退出/信号");
+    if (rc != kSkip) CHECK(rc != 0, "Debug 下 NN_ASSERT 失败 → 非零退出/信号");
 #endif
 }
 
@@ -132,13 +126,12 @@ void test_require_semantics()
     CHECK(ok.has_value() && *ok == 42, "NN_REQUIRE 成功路径返回值");
     auto bad = require_bad();
     CHECK(!bad.has_value(), "NN_REQUIRE 失败路径返回 unexpected");
-    if (!bad)
-        CHECK(bad.error().message == "require failed", "错误消息原样");
+    if (!bad) CHECK(bad.error().message == "require failed", "错误消息原样");
 }
 
 }  // namespace
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     g_self = (argc > 0 && argv[0] != nullptr) ? argv[0] : "";
 

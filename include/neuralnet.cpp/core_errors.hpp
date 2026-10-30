@@ -11,29 +11,26 @@
 #include <string_view>
 #include <type_traits>
 
-namespace nn {
+namespace nn
+{
 
 // ── 错误类型（C++23 std::expected）─────────────────────────────────────
 // 所有公共 API 使用 Result<T> 返回错误，不抛异常。
-struct Error {
-    std::string message;
-};
+struct Error
+{ std::string message; };
 
-template <typename T>
-using Result = std::expected<T, Error>;
+template <typename T> using Result = std::expected<T, Error>;
 
 // ── [[nodiscard]] 包装：让丢弃 Result 的调用在编译期告警 ──────────────
 // 用法：auto r = nn::check_result(foo());  // 若丢弃 r 会告警
 // 注：Result<T> 本身是 std::expected 的别名，无法在别名声明上加属性，
 // 此处提供显式 nodiscard 包装用于关键路径。
-template <typename T>
-[[nodiscard]] constexpr Result<T> check_result(Result<T> r) noexcept
-{
-    return r;
-}
+template <typename T> [[nodiscard]] constexpr Result<T> check_result(Result<T> r) noexcept
+{ return r; }
 
 // ── 错误处理宏族的实现支撑（detail；调用方只用下面的宏）────────────────────
-namespace detail {
+namespace detail
+{
 
 // 终止策略：铁律 #1 禁异常，这里只有 abort / exit 两条路，库头不出现 throw。
 // ⚠ Windows：CRT 在 abort() 时弹**模态**"abort() has been called"对话框
@@ -65,11 +62,15 @@ namespace detail {
 //     [nn] <语境>: <错误详情> (<表达式>) at <file>:<line>
 // 详情位为空（bool 条件失败）时回落为 "check failed"。
 [[nodiscard]] inline std::string check_message(const char* what, std::string_view ctx,
-                                               std::string_view detail,
-                                               std::source_location loc)
+                                               std::string_view detail, std::source_location loc)
 {
     std::string s = "[nn]";
-    if (!ctx.empty()) { s += ' '; s += ctx; s += ':'; }
+    if (!ctx.empty())
+    {
+        s += ' ';
+        s += ctx;
+        s += ':';
+    }
     s += ' ';
     s += detail.empty() ? std::string_view{"check failed"} : detail;
     s += " (";
@@ -110,8 +111,8 @@ template <typename T>
 
 template <typename T>
     requires (!std::is_void_v<T>)
-[[nodiscard]] inline T check_value(Result<T> const& r, const char* what,
-                                   std::string_view ctx, std::source_location loc)
+[[nodiscard]] inline T check_value(Result<T> const& r, const char* what, std::string_view ctx,
+                                   std::source_location loc)
 {
     if (!r) fail_abort(check_message(what, ctx, r.error().message, loc));
     return std::move(r).value();   // 只有失败才走到这；成功路径由 rvalue 重载接走
@@ -123,8 +124,7 @@ inline void check_value(Result<void> r, const char* what, std::string_view ctx,
     if (!r) fail_abort(check_message(what, ctx, r.error().message, loc));
 }
 
-inline void check_value(bool ok, const char* what, std::string_view ctx,
-                        std::source_location loc)
+inline void check_value(bool ok, const char* what, std::string_view ctx, std::source_location loc)
 {
     if (!ok) fail_abort(check_message(what, ctx, {}, loc));
 }
@@ -137,20 +137,19 @@ inline void check_value(bool ok, const char* what, std::string_view ctx,
 //    （原手写 `if (!tok) { …; return 1; }` 的 tok 就是这一类）。
 template <typename T>
     requires (!std::is_same_v<std::decay_t<T>, bool>)
-inline void check_exit(T&& r, const char* what, std::string_view ctx,
-                       int code, std::source_location loc)
+inline void check_exit(T&& r, const char* what, std::string_view ctx, int code,
+                       std::source_location loc)
 {
     if (!r)
     {
         if constexpr (requires { r.error().message; })
             fail_exit(check_message(what, ctx, r.error().message, loc), code);
-        else
-            fail_exit(check_message(what, ctx, {}, loc), code);
+        else fail_exit(check_message(what, ctx, {}, loc), code);
     }
 }
 
-inline void check_exit(bool ok, const char* what, std::string_view ctx,
-                       int code, std::source_location loc)
+inline void check_exit(bool ok, const char* what, std::string_view ctx, int code,
+                       std::source_location loc)
 {
     if (!ok) fail_exit(check_message(what, ctx, {}, loc), code);
 }
@@ -194,7 +193,7 @@ inline void check_exit(bool ok, const char* what, std::string_view ctx,
 //     → 选中错误分支 → **编译期报错（响亮，不会静默错值）**，加一层括号即可；
 //   · ⚠ 铁律 #10：宏续行反斜杠后面必须紧跟代码，绝不能出现 // 注释（宏体内
 //     一律用 /* */，// 注释只放整个宏块上方）。
-#define NN_TRY(decl, ...) \
+#define NN_TRY(decl, ...)      \
     auto decl = (__VA_ARGS__); \
     if (!decl) return std::unexpected(decl.error())
 
@@ -209,7 +208,7 @@ inline void check_exit(bool ok, const char* what, std::string_view ctx,
     if (auto&& nn_try_r_ = (x); !nn_try_r_) return std::unexpected(nn_try_r_.error())
 
 #define NN_TRY_MSG(decl, ctx, ...) \
-    auto decl = (__VA_ARGS__); \
+    auto decl = (__VA_ARGS__);     \
     if (!decl) return std::unexpected(::nn::detail::contextualize(decl.error(), (ctx)))
 
 #define NN_FAIL(msg) return std::unexpected(nn::Error{(msg)})
@@ -220,19 +219,15 @@ inline void check_exit(bool ok, const char* what, std::string_view ctx,
 
 #define NN_UNWRAP(...) \
     NN_DETAIL_PICK2(__VA_ARGS__, NN_UNWRAP_MSG, NN_UNWRAP_1, NN_PICK_END)(__VA_ARGS__)
-#define NN_UNWRAP_1(x) \
-    ::nn::detail::check_value((x), #x, {}, std::source_location::current())
-#define NN_UNWRAP_MSG(x, m) \
-    ::nn::detail::check_value((x), #x, (m), std::source_location::current())
+#define NN_UNWRAP_1(x) ::nn::detail::check_value((x), #x, {}, std::source_location::current())
+#define NN_UNWRAP_MSG(x, m) ::nn::detail::check_value((x), #x, (m), std::source_location::current())
 
 // ── 向后兼容别名（等价展开，仅旧代码在用；新代码请用 NN_UNWRAP）─────────
 #define NN_CHECK(...) NN_UNWRAP(__VA_ARGS__)
 #define NN_EASY_CHECK(x) NN_UNWRAP_1(x)
 
-#define NN_EXIT(...) \
-    NN_DETAIL_PICK3(__VA_ARGS__, NN_EXIT_MSG, NN_EXIT_2, NN_PICK_END)(__VA_ARGS__)
-#define NN_EXIT_2(x, c) \
-    ::nn::detail::check_exit((x), #x, {}, (c), std::source_location::current())
+#define NN_EXIT(...) NN_DETAIL_PICK3(__VA_ARGS__, NN_EXIT_MSG, NN_EXIT_2, NN_PICK_END)(__VA_ARGS__)
+#define NN_EXIT_2(x, c) ::nn::detail::check_exit((x), #x, {}, (c), std::source_location::current())
 #define NN_EXIT_MSG(x, c, m) \
     ::nn::detail::check_exit((x), #x, (m), (c), std::source_location::current())
 
@@ -246,15 +241,14 @@ template <typename T>
 [[nodiscard]] inline Result<T> parse_number(std::string_view s) noexcept
 {
     // 去除首尾空白（from_chars 不容忍前后空白）
-    while (!s.empty() && (s.front() == ' ' || s.front() == '\t' ||
-                          s.front() == '\n' || s.front() == '\r'))
+    while (!s.empty() &&
+           (s.front() == ' ' || s.front() == '\t' || s.front() == '\n' || s.front() == '\r'))
         s.remove_prefix(1);
-    while (!s.empty() && (s.back() == ' ' || s.back() == '\t' ||
-                          s.back() == '\n' || s.back() == '\r'))
+    while (!s.empty() &&
+           (s.back() == ' ' || s.back() == '\t' || s.back() == '\n' || s.back() == '\r'))
         s.remove_suffix(1);
 
-    if (s.empty())
-        NN_FAIL("empty numeric string");
+    if (s.empty()) NN_FAIL("empty numeric string");
     T value{};
     if constexpr (std::is_floating_point_v<T>)
     {
@@ -263,14 +257,10 @@ template <typename T>
         // （全平台/全标准库都有、不抛异常）。s 已去除首尾空白，要求整串被解析。
         std::string tmp(s);  // strtoX 需要 null 结尾
         char* p = nullptr;
-        if constexpr (std::is_same_v<T, float>)
-            value = std::strtof(tmp.c_str(), &p);
-        else if constexpr (std::is_same_v<T, double>)
-            value = std::strtod(tmp.c_str(), &p);
-        else
-            value = std::strtold(tmp.c_str(), &p);
-        if (p != tmp.c_str() + tmp.size())
-            NN_FAIL("invalid number: " + std::string(s));
+        if constexpr (std::is_same_v<T, float>) value = std::strtof(tmp.c_str(), &p);
+        else if constexpr (std::is_same_v<T, double>) value = std::strtod(tmp.c_str(), &p);
+        else value = std::strtold(tmp.c_str(), &p);
+        if (p != tmp.c_str() + tmp.size()) NN_FAIL("invalid number: " + std::string(s));
     }
     else
     {
@@ -283,4 +273,3 @@ template <typename T>
 }
 
 } // namespace nn
-

@@ -29,13 +29,11 @@ namespace nn
 
 // ── 读取文本文件（UTF-8） ──────────────────────────────────────────────
 // 使用 istreambuf_iterator 读取全部内容，无需 tellg，避免失败场景。
-[[nodiscard]] inline Result<std::string> load_text_file(const std::string &path)
+[[nodiscard]] inline Result<std::string> load_text_file(const std::string& path)
 {
     std::ifstream ifs(path, std::ios::binary);
-    if (!ifs)
-        NN_FAIL("Cannot open text file: " + path);
-    return std::string{std::istreambuf_iterator<char>(ifs),
-                       std::istreambuf_iterator<char>()};
+    if (!ifs) NN_FAIL("Cannot open text file: " + path);
+    return std::string{std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>()};
 }
 
 // ── 流式文件摘要（P2-1：整文件校验和 / 数据集身份）─────────────────────
@@ -47,37 +45,34 @@ namespace nn
 // 参数前无信息 crash），下游曾被迫给每个可执行文件加 /STACK:8MiB。
 // 64 KiB 块对本地盘吞吐无感（SHA-256 update 才是热点），栈需求降到任意
 // 平台默认值之下。
-[[nodiscard]] inline Result<std::array<std::uint8_t, 32>> sha256_file_prefix(
-    const std::string &path, std::uint64_t limit_bytes = ~std::uint64_t{0})
+[[nodiscard]] inline Result<std::array<std::uint8_t, 32>>
+sha256_file_prefix(const std::string& path, std::uint64_t limit_bytes = ~std::uint64_t{0})
 {
     std::ifstream ifs(path, std::ios::binary);
-    if (!ifs)
-        NN_FAIL("Cannot open file for hashing: " + path);
+    if (!ifs) NN_FAIL("Cannot open file for hashing: " + path);
 
     detail::Sha256State st;
     std::vector<char> buf(64u << 10);   // 堆分配；见上方 v1.0.1 说明
     std::uint64_t remain = limit_bytes;
     while (remain > 0)
     {
-        const auto want = static_cast<std::streamsize>(
-            remain < buf.size() ? remain : buf.size());
+        const auto want = static_cast<std::streamsize>(remain < buf.size() ? remain : buf.size());
         ifs.read(buf.data(), want);
         const auto got = ifs.gcount();
         if (got <= 0)
         {
             if (limit_bytes == ~std::uint64_t{0}) break;   // 正常读到文件尾
-            NN_FAIL("文件短于摘要范围（" + path + "）：期望前 " +
-                    std::to_string(limit_bytes) + " 字节");
+            NN_FAIL("文件短于摘要范围（" + path + "）：期望前 " + std::to_string(limit_bytes) +
+                    " 字节");
         }
-        detail::sha256_update(st, std::string_view(buf.data(),
-                                                  static_cast<std::size_t>(got)));
+        detail::sha256_update(st, std::string_view(buf.data(), static_cast<std::size_t>(got)));
         remain -= static_cast<std::uint64_t>(got);
     }
     return detail::sha256_finalize(st);
 }
 
 // 整文件 sha256（hex）——数据集身份（`TrainState.dataset.sha256`）用
-[[nodiscard]] inline Result<std::string> sha256_file_hex(const std::string &path)
+[[nodiscard]] inline Result<std::string> sha256_file_hex(const std::string& path)
 {
     NN_TRY(d, sha256_file_prefix(path));
     return sha256_hex(*d);
@@ -92,10 +87,10 @@ namespace nn
 // 写单个平凡可拷贝对象（定长 POD / 整数 / float 等）
 template <typename T>
     requires std::is_trivially_copyable_v<T>
-inline bool write_pod(std::ostream &os, const T &v)
+inline bool write_pod(std::ostream& os, const T& v)
 {
     auto bytes = std::as_bytes(std::span(&v, 1));
-    os.write(reinterpret_cast<const char *>(bytes.data()),
+    os.write(reinterpret_cast<const char*>(bytes.data()),
              static_cast<std::streamsize>(bytes.size_bytes()));
     return static_cast<bool>(os);
 }
@@ -103,33 +98,32 @@ inline bool write_pod(std::ostream &os, const T &v)
 // 读单个平凡可拷贝对象
 template <typename T>
     requires std::is_trivially_copyable_v<T>
-inline bool read_pod(std::istream &is, T &v)
+inline bool read_pod(std::istream& is, T& v)
 {
     auto bytes = std::as_writable_bytes(std::span(&v, 1));
-    is.read(reinterpret_cast<char *>(bytes.data()),
+    is.read(reinterpret_cast<char*>(bytes.data()),
             static_cast<std::streamsize>(bytes.size_bytes()));
     return static_cast<bool>(is);
 }
 
 // 写连续字节序列（std::span 视图，如 matrix 数据、packed 结构体数组）
 template <typename T, std::size_t Ext = std::dynamic_extent>
-inline bool write_pod_span(std::ostream &os, const std::span<T, Ext> &s)
+inline bool write_pod_span(std::ostream& os, const std::span<T, Ext>& s)
 {
     auto bytes = std::as_bytes(s);
-    os.write(reinterpret_cast<const char *>(bytes.data()),
+    os.write(reinterpret_cast<const char*>(bytes.data()),
              static_cast<std::streamsize>(bytes.size_bytes()));
     return static_cast<bool>(os);
 }
 
 // 读连续字节序列
 template <typename T, std::size_t Ext = std::dynamic_extent>
-inline bool read_pod_span(std::istream &is, const std::span<T, Ext> &s)
+inline bool read_pod_span(std::istream& is, const std::span<T, Ext>& s)
 {
     auto bytes = std::as_writable_bytes(s);
-    is.read(reinterpret_cast<char *>(bytes.data()),
+    is.read(reinterpret_cast<char*>(bytes.data()),
             static_cast<std::streamsize>(bytes.size_bytes()));
     return static_cast<bool>(is);
 }
 
 } // namespace nn
-

@@ -18,13 +18,14 @@ int g_fail = 0;
 
 #include "test_common.hpp"
 
-namespace {
+namespace
+{
 
 // FIPS 180-4 官方向量（十六进制摘要）
 struct Vector
 {
-    const char *input;
-    const char *sha256;
+    const char* input;
+    const char* sha256;
 };
 
 constexpr Vector kVectors[] = {
@@ -45,7 +46,7 @@ constexpr Vector kVectors[] = {
 void test_fips_vectors()
 {
     std::printf("FIPS 180-4 标准向量:\n");
-    for (const auto &v : kVectors)
+    for (const auto& v : kVectors)
     {
         const std::string got = nn::sha256_hex(v.input);
         CHECK(got == v.sha256, v.input[0] ? v.input : "<empty>");
@@ -70,8 +71,7 @@ void test_incremental_matches_oneshot()
     {
         nn::detail::Sha256State st;
         for (std::size_t pos = 0; pos < data.size(); pos += cs)
-            nn::detail::sha256_update(
-                st, std::string_view(data).substr(pos, cs));
+            nn::detail::sha256_update(st, std::string_view(data).substr(pos, cs));
         const std::string got = nn::sha256_hex(nn::detail::sha256_finalize(st));
         CHECK(got == ref, ("分块 " + std::to_string(cs)).c_str());
     }
@@ -94,8 +94,7 @@ void test_hex_format()
     CHECK(h.size() == 64, "64 字符");
     bool lower = true;
     for (char c : h)
-        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')))
-            lower = false;
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) lower = false;
     CHECK(lower, "全小写 hex");
 }
 

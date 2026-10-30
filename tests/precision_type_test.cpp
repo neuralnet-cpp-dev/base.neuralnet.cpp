@@ -34,8 +34,7 @@ float ref_half_to_float(std::uint16_t h)
     const std::uint32_t m = static_cast<std::uint32_t>(h) & 0x3FFu;
     if (e == 0)
     {
-        if (m == 0)
-            return sign ? -0.0f : 0.0f;
+        if (m == 0) return sign ? -0.0f : 0.0f;
         // value = m * 2^-24
         return static_cast<float>(static_cast<double>(m) * std::ldexp(1.0, -24));
     }
@@ -47,8 +46,9 @@ float ref_half_to_float(std::uint16_t h)
         return std::numeric_limits<float>::quiet_NaN();
     }
     // value = (1 + m/1024) * 2^(e-15)
-    return static_cast<float>((1.0 + static_cast<double>(m) / 1024.0) * std::ldexp(1.0, static_cast<int>(e) - 15))
-         * (sign ? -1.0f : 1.0f);
+    return static_cast<float>((1.0 + static_cast<double>(m) / 1024.0) *
+                              std::ldexp(1.0, static_cast<int>(e) - 15)) *
+           (sign ? -1.0f : 1.0f);
 }
 
 // f16 位型的 ulp（normal: 2^((e-15)-10) = 2^(e-25)；denormal: 2^-24）
@@ -59,22 +59,16 @@ float ref_half_to_float(std::uint16_t h)
 double ref_ulp(std::uint16_t h)
 {
     const std::uint32_t e = (h >> 10) & 0x1Fu;
-    if (e == 0)
-        return std::ldexp(1.0, -24);
-    if (e == 31)
-        return 0.0;
+    if (e == 0) return std::ldexp(1.0, -24);
+    if (e == 31) return 0.0;
     return std::ldexp(1.0, static_cast<int>(e) - 25);
 }
 
 constexpr bool is_f16_nan(std::uint16_t h)
-{
-    return ((h >> 10) & 0x1Fu) == 31 && (h & 0x3FFu) != 0;
-}
+{ return ((h >> 10) & 0x1Fu) == 31 && (h & 0x3FFu) != 0; }
 
 constexpr bool is_f16_quiet_nan(std::uint16_t h)
-{
-    return is_f16_nan(h) && (h & 0x400u) != 0;
-}
+{ return is_f16_nan(h) && (h & 0x400u) != 0; }
 
 void test_full_bitroundtrip()
 {
@@ -83,11 +77,9 @@ void test_full_bitroundtrip()
     {
         const float f = nn::detail::half_bits_to_float(static_cast<std::uint16_t>(h));
         const std::uint16_t h2 = nn::detail::float_to_half_bits(f);
-        if (h2 == static_cast<std::uint16_t>(h))
-            continue;
+        if (h2 == static_cast<std::uint16_t>(h)) continue;
         // 唯一允许的差异：NaN 载荷归一化为 quiet NaN
-        if (is_f16_nan(static_cast<std::uint16_t>(h)) && is_f16_quiet_nan(h2))
-            continue;
+        if (is_f16_nan(static_cast<std::uint16_t>(h)) && is_f16_quiet_nan(h2)) continue;
         CHECK(false, "f16→f32→f16 往返位型改变");
         if (g_failures > 20) break;
     }
@@ -99,8 +91,7 @@ void test_dense_sample_rhe()
     std::printf("  [2] 密集 f32 采样 RHE 保证 |err| <= 0.5 ulp");
     auto check_rhe = [](float v)
     {
-        if (std::isnan(v) || std::isinf(v))
-            return;
+        if (std::isnan(v) || std::isinf(v)) return;
         const nn::f16 h{v};
         const float f = static_cast<float>(h);
         const double ulp = ref_ulp(h.bits());
@@ -128,8 +119,8 @@ void test_dense_sample_rhe()
         }
         if (err > 0.5 * ulp + 1e-30)
         {
-            std::fprintf(stderr, "    v=%g → f16 bits=0x%04X (f=%g) err=%g > 0.5ulp=%g\n",
-                         v, h.bits(), f, err, 0.5 * ulp);
+            std::fprintf(stderr, "    v=%g → f16 bits=0x%04X (f=%g) err=%g > 0.5ulp=%g\n", v,
+                         h.bits(), f, err, 0.5 * ulp);
             ++g_failures;
         }
     };
@@ -189,8 +180,7 @@ void test_edge_values()
     // 2^-25：0 与 2^-24 的中点 → tie-to-even → 0
     CHECK(bits_of(std::ldexp(1.0f, -25)) == 0, "2^-25 → 0 (tie-to-even)");
     // 2^-25 + 最小扰动 → 2^-24
-    CHECK(bits_of(std::ldexp(1.0f, -25) + std::ldexp(1.0f, -48)) == 1,
-          "2^-25 + 2^-48 → 2^-24");
+    CHECK(bits_of(std::ldexp(1.0f, -25) + std::ldexp(1.0f, -48)) == 1, "2^-25 + 2^-48 → 2^-24");
     // 2^-26（远小于中点）→ 0
     CHECK(bits_of(std::ldexp(1.0f, -26)) == 0, "2^-26 → 0");
     // ── 次正规 flush 窗口（precision.hpp 守卫 exp <= -26）──────────────────
@@ -208,8 +198,7 @@ void test_edge_values()
                 std::fprintf(stderr, "    v=%g (2^%d 区) → bits=0x%04X，应为 0\n", v, e, b);
                 ++g_failures;
             }
-            if (bits_of(-v) != 0x8000)
-                ++g_failures;
+            if (bits_of(-v) != 0x8000) ++g_failures;
         }
     }
     // 次正规窗口上沿的两个关键代表值（窗口内必须恒 flush 为 0）
@@ -237,7 +226,8 @@ void test_edge_values()
     CHECK(nn::f16::min_normal().bits() == 0x0400, "min_normal");
     CHECK(nn::f16::min_denormal().bits() == 0x0001, "min_denormal");
     CHECK(static_cast<float>(nn::f16::max_finite()) == 65504.0f, "float(max_finite) == 65504");
-    CHECK(static_cast<float>(nn::f16::min_normal()) == std::ldexp(1.0f, -14), "float(min_normal) == 2^-14");
+    CHECK(static_cast<float>(nn::f16::min_normal()) == std::ldexp(1.0f, -14),
+          "float(min_normal) == 2^-14");
     std::printf(" done\n");
 }
 
@@ -274,8 +264,8 @@ void test_arithmetic_semantics()
     auto ulp_of = [](std::uint16_t bits) -> double
     {
         const std::uint32_t e = (bits >> 10) & 0x1Fu;
-        if (e == 0) return std::ldexp(1.0, -24);       // denormal ulp
-        if (e == 31) return 0.0;                        // inf/NaN
+        if (e == 0) return std::ldexp(1.0, -24); // denormal ulp
+        if (e == 31) return 0.0; // inf/NaN
         return std::ldexp(1.0, static_cast<int>(e) - 25); // 2^(e-10-15)
     };
     auto rhe = [ulp_of](const f16& r, float ref, const char* what)
@@ -302,8 +292,8 @@ void test_arithmetic_semantics()
         }
         if (std::fabs(static_cast<double>(f) - static_cast<double>(ref)) > 0.5 * ulp + 1e-30)
         {
-            std::fprintf(stderr, "    %s: r=0x%04X (f=%g) ref=%g 超 0.5ulp=%g\n",
-                         what, r.bits(), f, ref, 0.5 * ulp);
+            std::fprintf(stderr, "    %s: r=0x%04X (f=%g) ref=%g 超 0.5ulp=%g\n", what, r.bits(), f,
+                         ref, 0.5 * ulp);
             ++g_failures;
         }
     };
@@ -367,14 +357,16 @@ void test_error_paths()
         CHECK(r.error().message.find("t1_58") != std::string::npos, "T1_58 错误含精度名");
         CHECK(r.error().message.find("不是存储精度") != std::string::npos, "T1_58 错误语义");
     }
-    CHECK(std::string(nn::precision_name(nn::Precision::T1_58)) == "t1_58", "precision_name(T1_58)");
+    CHECK(std::string(nn::precision_name(nn::Precision::T1_58)) == "t1_58",
+          "precision_name(T1_58)");
     CHECK(nn::precision_bytes(nn::Precision::T1_58) == 0, "precision_bytes(T1_58)=0（非存储精度）");
     // 提升序与枚举值解耦（§4.1 R4）：枚举值只是标签，T1_58 不进提升序
     CHECK(nn::precision_has_order(nn::Precision::F16), "F16 有提升序");
     CHECK(nn::precision_has_order(nn::Precision::F32), "F32 有提升序");
     CHECK(!nn::precision_has_order(nn::Precision::T1_58), "T1_58 **无**提升序（离散化，正交）");
     CHECK(!nn::precision_has_order(nn::Precision::BF16), "BF16 无提升序（保留）");
-    CHECK(nn::precision_rank(nn::Precision::F16) < nn::precision_rank(nn::Precision::F32), "F16 < F32");
+    CHECK(nn::precision_rank(nn::Precision::F16) < nn::precision_rank(nn::Precision::F32),
+          "F16 < F32");
     CHECK(nn::precision_rank(nn::Precision::T1_58) == -1, "T1_58 rank = -1");
     CHECK(nn::max_precision(nn::Precision::F16, nn::Precision::F32) == nn::Precision::F32,
           "max_precision 走 rank 而非枚举值");
@@ -384,8 +376,10 @@ void test_error_paths()
     CHECK(nn::precision_tag(nn::Precision::F16) == 2, "tag(F16)=2");
     CHECK(nn::precision_tag(nn::Precision::BF16) == 3, "tag(BF16)=3 (保留)");
     CHECK(nn::precision_tag(nn::Precision::T1_58) == 4, "tag(T1_58)=4");
-    CHECK(nn::precision_from_tag(nn::precision_tag(nn::Precision::F16)) == nn::Precision::F16, "tag 往返 F16");
-    CHECK(nn::precision_from_tag(nn::precision_tag(nn::Precision::F32)) == nn::Precision::F32, "tag 往返 F32");
+    CHECK(nn::precision_from_tag(nn::precision_tag(nn::Precision::F16)) == nn::Precision::F16,
+          "tag 往返 F16");
+    CHECK(nn::precision_from_tag(nn::precision_tag(nn::Precision::F32)) == nn::Precision::F32,
+          "tag 往返 F32");
     CHECK(nn::precision_from_tag(4) == nn::Precision::T1_58, "tag 4 → T1_58");
     // elem / acc
     CHECK((std::is_same_v<nn::elem<nn::Precision::F16>, nn::f16>), "elem<F16> = f16");
@@ -417,10 +411,8 @@ void test_reference_consistency()
         }
         // 独立参考实现的对拍（仅 f16→f32 方向；方向已由 [1][2] 覆盖）
         const float ref = ref_half_to_float(h.bits());
-        if (std::isnan(ref) || std::isnan(f))
-            CHECK(std::isnan(f) == std::isnan(ref), "NaN 一致");
-        else
-            CHECK(f == ref, "f16→f32 与独立参考一致");
+        if (std::isnan(ref) || std::isnan(f)) CHECK(std::isnan(f) == std::isnan(ref), "NaN 一致");
+        else CHECK(f == ref, "f16→f32 与独立参考一致");
         if (g_failures > 50)
         {
             std::fprintf(stderr, "  失败过多，提前终止 [7]\n");

@@ -51,10 +51,10 @@ namespace nn
 // ══════════════════════════════════════════════════════════════════════════
 enum class Precision : std::uint8_t
 {
-    F16   = 0,  // IEEE half（binary16），2 字节
-    F32   = 1,  // 参考精度（reference）
-    BF16  = 2,  // 保留（Phase 2；使用 → 清晰报错）
-    F64   = 3,  // 保留（使用 → 清晰报错）
+    F16 = 0,  // IEEE half（binary16），2 字节
+    F32 = 1,  // 参考精度（reference）
+    BF16 = 2,  // 保留（Phase 2；使用 → 清晰报错）
+    F64 = 3,  // 保留（使用 → 清晰报错）
     T1_58 = 4,  // 三值 {-1,0,+1}（1.58 bit/权重）—— P2 起才有打包存储
 };
 
@@ -63,18 +63,19 @@ enum class Precision : std::uint8_t
 // 提升序（§4.1 R4）：与枚举值**解耦**。F16 < F32 是唯一的合法序；
 // T1_58（离散化，正交）与 BF16/F64（保留）都**没有**提升序。
 [[nodiscard]] constexpr bool precision_has_order(Precision p) noexcept
-{
-    return p == Precision::F16 || p == Precision::F32;
-}
+{ return p == Precision::F16 || p == Precision::F32; }
 
 // 序值：F16 = 0 < F32 = 1；无序的精度返回 -1（调用方须先查 precision_has_order）
 [[nodiscard]] constexpr int precision_rank(Precision p) noexcept
 {
     switch (p)
     {
-        case Precision::F16:  return 0;
-        case Precision::F32:  return 1;
-        default:              return -1;
+    case Precision::F16:
+        return 0;
+    case Precision::F32:
+        return 1;
+    default:
+        return -1;
     }
 }
 
@@ -86,9 +87,12 @@ enum class Precision : std::uint8_t
 {
     switch (p)
     {
-        case Precision::F16:  return 2;
-        case Precision::F32:  return 4;
-        default:              return 0;  // BF16 / F64（未实现）/ T1_58（非存储精度）
+    case Precision::F16:
+        return 2;
+    case Precision::F32:
+        return 4;
+    default:
+        return 0;  // BF16 / F64（未实现）/ T1_58（非存储精度）
     }
 }
 
@@ -96,11 +100,16 @@ enum class Precision : std::uint8_t
 {
     switch (p)
     {
-        case Precision::F16:  return "f16";
-        case Precision::F32:  return "f32";
-        case Precision::BF16: return "bf16";
-        case Precision::F64:  return "f64";
-        case Precision::T1_58: return "t1_58";
+    case Precision::F16:
+        return "f16";
+    case Precision::F32:
+        return "f32";
+    case Precision::BF16:
+        return "bf16";
+    case Precision::F64:
+        return "f64";
+    case Precision::T1_58:
+        return "t1_58";
     }
     return "?";
 }
@@ -112,9 +121,8 @@ enum class Precision : std::uint8_t
 {
     if (!precision_has_order(a) || !precision_has_order(b))
     {
-        NN_UNWRAP(false,
-                 std::string("max_precision: 无提升序的精度（非舍入精度）: ")
-                     + precision_name(a) + " / " + precision_name(b));
+        NN_UNWRAP(false, std::string("max_precision: 无提升序的精度（非舍入精度）: ") +
+                             precision_name(a) + " / " + precision_name(b));
     }
     return precision_rank(a) >= precision_rank(b) ? a : b;
 }
@@ -144,11 +152,16 @@ enum class Precision : std::uint8_t
 {
     switch (p)
     {
-        case Precision::F32:  return 0;
-        case Precision::F64:  return 1;
-        case Precision::F16:  return 2;
-        case Precision::BF16: return 3;
-        case Precision::T1_58: return 4;
+    case Precision::F32:
+        return 0;
+    case Precision::F64:
+        return 1;
+    case Precision::F16:
+        return 2;
+    case Precision::BF16:
+        return 3;
+    case Precision::T1_58:
+        return 4;
     }
     return 0;
 }
@@ -157,12 +170,18 @@ enum class Precision : std::uint8_t
 {
     switch (tag)
     {
-        case 0: return Precision::F32;
-        case 1: return Precision::F64;
-        case 2: return Precision::F16;
-        case 3: return Precision::BF16;
-        case 4: return Precision::T1_58;
-        default: return Precision::BF16;
+    case 0:
+        return Precision::F32;
+    case 1:
+        return Precision::F64;
+    case 2:
+        return Precision::F16;
+    case 3:
+        return Precision::BF16;
+    case 4:
+        return Precision::T1_58;
+    default:
+        return Precision::BF16;
     }
 }
 
@@ -174,7 +193,8 @@ enum class Precision : std::uint8_t
 //
 // 注：GPU 侧用 static_cast<int>(P) 拼精度签名/报错文本，依赖的也是这组枚举值，
 // 故枚举值一并冻结（改它 = 改精度签名口径）。
-static_assert(static_cast<int>(Precision::F16) == 0, "enum 冻结：F16=0（precision_tag 与 GPU 精度签名均依赖）");
+static_assert(static_cast<int>(Precision::F16) == 0,
+              "enum 冻结：F16=0（precision_tag 与 GPU 精度签名均依赖）");
 static_assert(static_cast<int>(Precision::F32) == 1, "enum 冻结：F32=1");
 static_assert(static_cast<int>(Precision::BF16) == 2, "enum 冻结：BF16=2");
 static_assert(static_cast<int>(Precision::F64) == 3, "enum 冻结：F64=3");
@@ -191,7 +211,8 @@ static_assert(precision_from_tag(precision_tag(Precision::F16)) == Precision::F1
 static_assert(precision_from_tag(precision_tag(Precision::F32)) == Precision::F32, "往返：f32");
 static_assert(precision_from_tag(precision_tag(Precision::BF16)) == Precision::BF16, "往返：bf16");
 static_assert(precision_from_tag(precision_tag(Precision::F64)) == Precision::F64, "往返：f64");
-static_assert(precision_from_tag(precision_tag(Precision::T1_58)) == Precision::T1_58, "往返：t1_58");
+static_assert(precision_from_tag(precision_tag(Precision::T1_58)) == Precision::T1_58,
+              "往返：t1_58");
 
 // ══════════════════════════════════════════════════════════════════════════
 // CPU f16 硬件能力（编译期常量，§7.1）
@@ -262,8 +283,7 @@ namespace detail
         // 恒 RNE —— 确定性（铁律 8）要求不随宿主舍入模式漂移。
         // 注：`_cvtss_sh` 的返回类型随实现而异（Clang/libc++ 为 `unsigned
         // short`，MSVC 为 `__m128i`）→ 统一经 `static_cast` 收窄，两种都成立。
-        return static_cast<std::uint16_t>(
-            _cvtss_sh(f, _MM_FROUND_TO_NEAREST_INT));
+        return static_cast<std::uint16_t>(_cvtss_sh(f, _MM_FROUND_TO_NEAREST_INT));
 #endif
     const std::uint32_t bits = std::bit_cast<std::uint32_t>(f);
     const std::uint32_t sign = (bits >> 16) & 0x8000u;
@@ -296,31 +316,26 @@ namespace detail
         //   exp ≤ -26：D < 0.5（无 tie 可能）→ 恒 0（守卫先行 flush，不做移位——
         //   对这些指数 shift = -exp-1 ≥ 25 已越过公式合法区间，exp ≤ -33 时
         //   shift ≥ 32 即 uint32 移位 UB）
-        if (exp <= -26)
-        {
-            return static_cast<std::uint16_t>(sign);
-        }
+        if (exp <= -26) { return static_cast<std::uint16_t>(sign); }
         const std::uint32_t full = 0x800000u | mant;          // 24 位尾数（隐含 1）
         const int shift = -exp - 1;                            // 14..24
         std::uint32_t d = full >> shift;                       // 候选规格化前尾数
         const std::uint32_t lsb = (full >> (shift - 1)) & 1u;  // 被舍弃的最高位
         const std::uint32_t rem = full & ((1u << (shift - 1)) - 1u);  // 更低位
-        if (lsb != 0 && (rem != 0 || (d & 1u) != 0))
-            ++d;                                               // round-half-to-even
+        if (lsb != 0 && (rem != 0 || (d & 1u) != 0)) ++d; // round-half-to-even
         if (d == 1024)
         {
             // 舍入进位到最小正规数 2^-14
-            return static_cast<std::uint16_t>(sign | 0x400u);  // e=1, m=0
+            return static_cast<std::uint16_t>(sign | 0x400u); // e=1, m=0
         }
         return static_cast<std::uint16_t>(sign | d);
     }
     // 正规区：-14 <= exp <= 15。keep = 11 位尾数（隐含 1 + 10 位）
     const std::uint32_t full = 0x800000u | mant;
-    std::uint32_t keep = full >> 13;                           // 1024..2047
+    std::uint32_t keep = full >> 13; // 1024..2047
     const std::uint32_t lsb = (full >> 12) & 1u;
     const std::uint32_t rem = full & 0xFFFu;
-    if (lsb != 0 && (rem != 0 || (keep & 1u) != 0))
-        ++keep;
+    if (lsb != 0 && (rem != 0 || (keep & 1u) != 0)) ++keep;
     if (keep == 2048)
     {
         // 舍入进位：尾数变为 0，指数 +1
@@ -328,19 +343,17 @@ namespace detail
         {
             return static_cast<std::uint16_t>(sign | 0x7C00u); // 进位溢出 → ±inf
         }
-        return static_cast<std::uint16_t>(
-            sign | (static_cast<std::uint32_t>(exp + 1 + 15) << 10));
+        return static_cast<std::uint16_t>(sign | (static_cast<std::uint32_t>(exp + 1 + 15) << 10));
     }
-    return static_cast<std::uint16_t>(
-        sign | (static_cast<std::uint32_t>(exp + 15) << 10) | (keep & 0x3FFu));
+    return static_cast<std::uint16_t>(sign | (static_cast<std::uint32_t>(exp + 15) << 10) |
+                                      (keep & 0x3FFu));
 }
 
 // f16 位型 → f32（无损、精确）
 [[nodiscard]] constexpr float half_bits_to_float(std::uint16_t h) noexcept
 {
 #if defined(__F16C__)
-    if (!std::is_constant_evaluated())
-        return _cvtsh_ss(h);   // 无损精确转换（含次正规/±inf/NaN）
+    if (!std::is_constant_evaluated()) return _cvtsh_ss(h); // 无损精确转换（含次正规/±inf/NaN）
 #endif
     const std::uint32_t sign = (static_cast<std::uint32_t>(h) & 0x8000u) << 16;
     const std::uint32_t e = (static_cast<std::uint32_t>(h) >> 10) & 0x1Fu;
@@ -351,7 +364,7 @@ namespace detail
     {
         if (m == 0)
         {
-            bits = sign;  // ±0
+            bits = sign; // ±0
         }
         else
         {
@@ -366,9 +379,8 @@ namespace detail
                 ++p;
             }
             const std::uint32_t f = (p > 0) ? (m & ((1u << p) - 1u)) : 0u;
-            bits = sign
-                 | (static_cast<std::uint32_t>(p + 103) << 23)
-                 | ((p > 0) ? (f << (23 - p)) : 0u);
+            bits = sign | (static_cast<std::uint32_t>(p + 103) << 23) |
+                   ((p > 0) ? (f << (23 - p)) : 0u);
         }
     }
     else if (e == 31)
@@ -407,9 +419,7 @@ public:
 
     // f16 → f32（无损；显式，避免意外提升）
     [[nodiscard]] constexpr explicit operator float() const noexcept
-    {
-        return detail::half_bits_to_float(bits_);
-    }
+    { return detail::half_bits_to_float(bits_); }
 
     [[nodiscard]] constexpr storage bits() const noexcept { return bits_; }
 
@@ -418,15 +428,17 @@ public:
     [[nodiscard]] static constexpr f16 one() noexcept { return f16{storage{0x3C00}}; }
     [[nodiscard]] static constexpr f16 inf() noexcept { return f16{storage{0x7C00}}; }
     [[nodiscard]] static constexpr f16 nan() noexcept { return f16{storage{0x7E00}}; }
-    [[nodiscard]] static constexpr f16 max_finite() noexcept { return f16{storage{0x7BFF}}; }   // 65504
-    [[nodiscard]] static constexpr f16 min_normal() noexcept { return f16{storage{0x0400}}; }    // 2^-14 (e=1, m=0)
-    [[nodiscard]] static constexpr f16 min_denormal() noexcept { return f16{storage{0x0001}}; }  // 2^-24
+    [[nodiscard]] static constexpr f16 max_finite() noexcept
+    { return f16{storage{0x7BFF}}; } // 65504
+    [[nodiscard]] static constexpr f16 min_normal() noexcept
+    { return f16{storage{0x0400}}; } // 2^-14 (e=1, m=0)
+    [[nodiscard]] static constexpr f16 min_denormal() noexcept
+    { return f16{storage{0x0001}}; } // 2^-24
 
     // ── 比较（经 f32 转换；NaN 语义与 f32 一致：NaN != 一切，NaN < 比较为 false）
     [[nodiscard]] constexpr bool operator==(const f16& o) const noexcept
     { return static_cast<float>(*this) == static_cast<float>(o); }
-    [[nodiscard]] constexpr bool operator!=(const f16& o) const noexcept
-    { return !(*this == o); }
+    [[nodiscard]] constexpr bool operator!=(const f16& o) const noexcept { return !(*this == o); }
     [[nodiscard]] constexpr bool operator<(const f16& o) const noexcept
     { return static_cast<float>(*this) < static_cast<float>(o); }
     [[nodiscard]] constexpr bool operator<=(const f16& o) const noexcept
@@ -470,17 +482,53 @@ public:
     { return f16{s / static_cast<float>(a)}; }
 
     // ── 就地运算 ───────────────────────────────────────────────────────────
-    f16& operator+=(const f16& o) { *this = *this + o; return *this; }
-    f16& operator-=(const f16& o) { *this = *this - o; return *this; }
-    f16& operator*=(const f16& o) { *this = *this * o; return *this; }
-    f16& operator/=(const f16& o) { *this = *this / o; return *this; }
-    f16& operator+=(float s) { *this = *this + s; return *this; }
-    f16& operator-=(float s) { *this = *this - s; return *this; }
-    f16& operator*=(float s) { *this = *this * s; return *this; }
-    f16& operator/=(float s) { *this = *this / s; return *this; }
+    f16& operator+=(const f16& o)
+    {
+        *this = *this + o;
+        return *this;
+    }
+    f16& operator-=(const f16& o)
+    {
+        *this = *this - o;
+        return *this;
+    }
+    f16& operator*=(const f16& o)
+    {
+        *this = *this * o;
+        return *this;
+    }
+    f16& operator/=(const f16& o)
+    {
+        *this = *this / o;
+        return *this;
+    }
+    f16& operator+=(float s)
+    {
+        *this = *this + s;
+        return *this;
+    }
+    f16& operator-=(float s)
+    {
+        *this = *this - s;
+        return *this;
+    }
+    f16& operator*=(float s)
+    {
+        *this = *this * s;
+        return *this;
+    }
+    f16& operator/=(float s)
+    {
+        *this = *this / s;
+        return *this;
+    }
 
     // 从浮点值赋值 = 舍入到 f16 后存储（f16 存储的固有语义）
-    f16& operator=(float v) { *this = f16{v}; return *this; }
+    f16& operator=(float v)
+    {
+        *this = f16{v};
+        return *this;
+    }
 
     // ── std::plus<> / std::multiplies<> 等通过上述 operator 自然可用 ──────
 };
@@ -494,24 +542,25 @@ static_assert(sizeof(f16) == 2, "f16 must be 2 bytes (R16F 布局)");
 // 运行期使用先被 check_precision_supported 拦截（清晰 Result 报错）。
 // ══════════════════════════════════════════════════════════════════════════
 
-using f32 = float;  // 参考精度别名（§5.2）
+using f32 = float; // 参考精度别名（§5.2）
 
-template <Precision P>
-struct Elem;  // 无通用定义（保留值不可实例化）
+template <Precision P> struct Elem; // 无通用定义（保留值不可实例化）
 
-template <>
-struct Elem<Precision::F16> { using type = f16; };
+template <> struct Elem<Precision::F16>
+{
+    using type = f16;
+};
 
-template <>
-struct Elem<Precision::F32> { using type = float; };
+template <> struct Elem<Precision::F32>
+{
+    using type = float;
+};
 
-template <Precision P>
-using elem = typename Elem<P>::type;
+template <Precision P> using elem = typename Elem<P>::type;
 
 // 累加类型（§7.2：matmul / 归约累加 = max(P, f32)）：
 // F32 → float；F16 → float（f32 累加）
-template <Precision P>
-using acc = float;
+template <Precision P> using acc = float;
 
 // ══════════════════════════════════════════════════════════════════════════
 // PrecisionProfile — 模型级精度配置（§9.1，默认全 F32）
@@ -528,27 +577,26 @@ using acc = float;
 // ══════════════════════════════════════════════════════════════════════════
 struct PrecisionProfile
 {
-    Precision param     = Precision::F32;
-    Precision compute   = Precision::F32;
-    Precision stable    = Precision::F32;
+    Precision param = Precision::F32;
+    Precision compute = Precision::F32;
+    Precision stable = Precision::F32;
     Precision optimizer = Precision::F32;
 };
 
 // 典型配方（§9.4）
 inline constexpr PrecisionProfile profile_f32() noexcept
 {
-    return PrecisionProfile{};  // 全 F32
+    return PrecisionProfile{}; // 全 F32
 }
 
 // master-weights（经典混合精度）：
 // f32 主权重 + f16 计算 + f32 稳定算子 + f32 优化器状态
 inline constexpr PrecisionProfile profile_master_weights() noexcept
 {
-    return PrecisionProfile{
-        /*param=*/     Precision::F32,
-        /*compute=*/   Precision::F16,
-        /*stable=*/    Precision::F32,
-        /*optimizer=*/ Precision::F32};
+    return PrecisionProfile{/*param=*/Precision::F32,
+                            /*compute=*/Precision::F16,
+                            /*stable=*/Precision::F32,
+                            /*optimizer=*/Precision::F32};
 }
 
 // ── f16 训练配方（CLI `--f16` 的语义）─────────────────────────────────────
@@ -571,11 +619,10 @@ inline constexpr PrecisionProfile profile_master_weights() noexcept
 // 当前不具备 → 保留 profile_all_f16() 供显式实验，不作 CLI 默认。
 inline constexpr PrecisionProfile profile_f16() noexcept
 {
-    return PrecisionProfile{
-        /*param=*/     Precision::F16,
-        /*compute=*/   Precision::F16,
-        /*stable=*/    Precision::F32,
-        /*optimizer=*/ Precision::F32};
+    return PrecisionProfile{/*param=*/Precision::F16,
+                            /*compute=*/Precision::F16,
+                            /*stable=*/Precision::F32,
+                            /*optimizer=*/Precision::F32};
 }
 
 // ── 三值权重训练配方（CLI `--t1_58` 的语义）───────────────────────────────
@@ -596,8 +643,8 @@ inline constexpr PrecisionProfile profile_f16() noexcept
 // 接线范围与 CLI 语义见 docs/todo/21-quantized-weights.md §4.10。
 inline constexpr PrecisionProfile profile_t1_58() noexcept
 {
-    PrecisionProfile p = profile_f16();   // compute/stable/optimizer 逐字段跟随 --f16
-    p.param = Precision::T1_58;           // 只有权重槽变三值
+    PrecisionProfile p = profile_f16(); // compute/stable/optimizer 逐字段跟随 --f16
+    p.param = Precision::T1_58; // 只有权重槽变三值
     return p;
 }
 
@@ -608,11 +655,10 @@ inline constexpr PrecisionProfile profile_t1_58() noexcept
 // 两者均与本配方（四字段全 F16）不同。
 inline constexpr PrecisionProfile profile_all_f16() noexcept
 {
-    return PrecisionProfile{
-        /*param=*/     Precision::F16,
-        /*compute=*/   Precision::F16,
-        /*stable=*/    Precision::F16,
-        /*optimizer=*/ Precision::F16};
+    return PrecisionProfile{/*param=*/Precision::F16,
+                            /*compute=*/Precision::F16,
+                            /*stable=*/Precision::F16,
+                            /*optimizer=*/Precision::F16};
 }
 
 // 便捷判定：全 F32 配置。CLI 用它决定是否打印精度启用提示（边界 cast
@@ -620,8 +666,8 @@ inline constexpr PrecisionProfile profile_all_f16() noexcept
 // 直接使用原生引擎逐字节一致；非 f32 profile 由该入口自动接管）。
 [[nodiscard]] constexpr bool is_profile_f32(const PrecisionProfile& p) noexcept
 {
-    return p.param == Precision::F32 && p.compute == Precision::F32 &&
-           p.stable == Precision::F32 && p.optimizer == Precision::F32;
+    return p.param == Precision::F32 && p.compute == Precision::F32 && p.stable == Precision::F32 &&
+           p.optimizer == Precision::F32;
 }
 
 } // namespace nn

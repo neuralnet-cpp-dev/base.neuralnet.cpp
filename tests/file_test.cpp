@@ -23,11 +23,12 @@ int g_fail = 0;
 
 #include "test_common.hpp"
 
-namespace {
+namespace
+{
 
-const char *kPath = "file_test_tmp.bin";    // 测试临时文件（结束时删除）
+const char* kPath = "file_test_tmp.bin";    // 测试临时文件（结束时删除）
 
-void write_all(const std::string &path, const std::string &bytes)
+void write_all(const std::string& path, const std::string& bytes)
 {
     std::ofstream ofs(path, std::ios::binary);
     ofs.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
@@ -46,8 +47,7 @@ void test_load_text_file()
     auto bad = nn::load_text_file("file_test_missing_no_such_file.txt");
     CHECK(!bad.has_value(), "不存在的文件报错");
     if (!bad)
-        CHECK(bad.error().message.find("file_test_missing_no_such_file.txt")
-                  != std::string::npos,
+        CHECK(bad.error().message.find("file_test_missing_no_such_file.txt") != std::string::npos,
               "错误消息含路径");
 }
 
@@ -63,14 +63,14 @@ void test_sha256_file()
     if (whole) CHECK(*whole == ref, "整文件摘要 = 内容 sha256_hex");
 
     // limit_bytes 前缀摘要 = 前缀内容摘要
-    for (std::uint64_t n : {std::uint64_t{0}, std::uint64_t{1},
-                            std::uint64_t{10}, std::uint64_t{content.size()}})
+    for (std::uint64_t n :
+         {std::uint64_t{0}, std::uint64_t{1}, std::uint64_t{10}, std::uint64_t{content.size()}})
     {
         auto p = nn::sha256_file_prefix(kPath, n);
         CHECK(p.has_value(), "前缀摘要成功");
         if (p)
-            CHECK(nn::sha256_hex(*p) == nn::sha256_hex(
-                      std::string_view(content).substr(0, static_cast<std::size_t>(n))),
+            CHECK(nn::sha256_hex(*p) == nn::sha256_hex(std::string_view(content).substr(
+                                            0, static_cast<std::size_t>(n))),
                   ("前缀 " + std::to_string(n) + " 字节").c_str());
     }
 
@@ -111,8 +111,7 @@ void test_pod_io()
         std::vector<float> dst(kN);
         std::ifstream ifs(kPath, std::ios::binary);
         CHECK(nn::read_pod_span(ifs, std::span(dst)), "read_pod_span 成功");
-        CHECK(dst.size() == kN && dst[1] == -1.5f && dst[3] == 1e30f,
-              "span 值往返一致");
+        CHECK(dst.size() == kN && dst[1] == -1.5f && dst[3] == 1e30f, "span 值往返一致");
     }
     // 空 span（合法：0 元素）
     {

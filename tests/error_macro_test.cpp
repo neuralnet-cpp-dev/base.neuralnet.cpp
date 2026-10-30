@@ -30,25 +30,40 @@
 
 int g_fail = 0;
 
-namespace {
+namespace
+{
 
 constexpr int kSkip = -1;   // std::system 无法启动子进程（区别于任何真实退出码）
 
 std::string g_self;         // argv[0]：子进程自举用
 
-nn::Result<int> ok_int() { return 42; }
-nn::Result<int> bad_int() { return std::unexpected(nn::Error{"inner failure"}); }
-nn::Result<void> ok_void() { return {}; }
-nn::Result<std::string> payload() { return std::string{"payload"}; }
+nn::Result<int> ok_int()
+{ return 42; }
+nn::Result<int> bad_int()
+{ return std::unexpected(nn::Error{"inner failure"}); }
+nn::Result<void> ok_void()
+{ return {}; }
+nn::Result<std::string> payload()
+{ return std::string{"payload"}; }
 
 // 传播载体：NN_TRY（现有主形态）与 NN_TRY_MSG（带语境）
-nn::Result<int> propagate_plain() { NN_TRY(r, bad_int()); return *r; }
-nn::Result<int> propagate_ctx() { NN_TRY_MSG(r, "读取配置", bad_int()); return *r; }
+nn::Result<int> propagate_plain()
+{
+    NN_TRY(r, bad_int());
+    return *r;
+}
+nn::Result<int> propagate_ctx()
+{
+    NN_TRY_MSG(r, "读取配置", bad_int());
+    return *r;
+}
 
 // 错误源头语法糖
-nn::Result<int> fail_source() { NN_FAIL("源头错误"); }
+nn::Result<int> fail_source()
+{ NN_FAIL("源头错误"); }
 
-void ok(const char* msg) { std::printf("[ OK ] %s\n", msg); }
+void ok(const char* msg)
+{ std::printf("[ OK ] %s\n", msg); }
 
 // ── ① 解包三形态 ─────────────────────────────────────────────────────────
 void test_unwrap()
@@ -82,26 +97,22 @@ void test_unwrap()
 void test_message_format()
 {
     const std::string m = nn::detail::check_message(
-        "engine.from_matrix(m)", "上传批次", "shape mismatch",
-        std::source_location::current());
+        "engine.from_matrix(m)", "上传批次", "shape mismatch", std::source_location::current());
 
     CHECK(m.starts_with("[nn]"), "打印前缀为 [nn]");
     CHECK(m.find("上传批次: shape mismatch") != std::string::npos,
           "语境与错误详情按 '<语境>: <详情>' 拼接");
-    CHECK(m.find("(engine.from_matrix(m))") != std::string::npos,
-          "被检查的表达式原文在括号里");
-    CHECK(m.find("error_macro_test.cpp") != std::string::npos,
-          "打印带源文件名");
+    CHECK(m.find("(engine.from_matrix(m))") != std::string::npos, "被检查的表达式原文在括号里");
+    CHECK(m.find("error_macro_test.cpp") != std::string::npos, "打印带源文件名");
 
     // 详情为空（bool 条件失败）→ 回落 "check failed"
-    const std::string m2 = nn::detail::check_message(
-        "idx < n", {}, {}, std::source_location::current());
-    CHECK(m2.find("check failed") != std::string::npos,
-          "详情为空时回落 check failed");
+    const std::string m2 =
+        nn::detail::check_message("idx < n", {}, {}, std::source_location::current());
+    CHECK(m2.find("check failed") != std::string::npos, "详情为空时回落 check failed");
 
     // 语境为空 → 不留冒号
-    const std::string m3 = nn::detail::check_message(
-        "f()", {}, "boom", std::source_location::current());
+    const std::string m3 =
+        nn::detail::check_message("f()", {}, "boom", std::source_location::current());
     CHECK(m3.starts_with("[nn] boom"), "无语境时不产生多余冒号");
     CHECK(m3.find("()") == std::string::npos || m3.find("(f())") != std::string::npos,
           "无语境时表达式仍在");
@@ -112,13 +123,11 @@ void test_propagate()
 {
     auto p = propagate_plain();
     CHECK(!p, "NN_TRY 传播失败");
-    CHECK(p.error().message == "inner failure",
-          "NN_TRY 不改错误消息（与手写形态逐字等价）");
+    CHECK(p.error().message == "inner failure", "NN_TRY 不改错误消息（与手写形态逐字等价）");
 
     auto c = propagate_ctx();
     CHECK(!c, "NN_TRY_MSG 传播失败");
-    CHECK(c.error().message == "读取配置: inner failure",
-          "NN_TRY_MSG 把语境前缀进错误消息");
+    CHECK(c.error().message == "读取配置: inner failure", "NN_TRY_MSG 把语境前缀进错误消息");
 
     auto f = fail_source();
     CHECK(!f, "NN_FAIL 产生错误");
@@ -126,8 +135,7 @@ void test_propagate()
 
     // 空语境 = 逐字等价
     const nn::Error e{"raw"};
-    CHECK(nn::detail::contextualize(e, {}).message == "raw",
-          "空语境不修改错误消息");
+    CHECK(nn::detail::contextualize(e, {}).message == "raw", "空语境不修改错误消息");
 }
 
 // ── ④ NN_TRY_CHECK 单次求值（副作用回归）─────────────────────────────────
@@ -142,12 +150,15 @@ int g_side_effects = 0;
 nn::Result<void> flaky_side_effect()
 {
     ++g_side_effects;
-    if (g_side_effects == 1)
-        return std::unexpected(nn::Error{"first call fails"});
+    if (g_side_effects == 1) return std::unexpected(nn::Error{"first call fails"});
     return {};
 }
 
-nn::Result<int> call_flaky() { NN_TRY_CHECK(flaky_side_effect()); return 7; }
+nn::Result<int> call_flaky()
+{
+    NN_TRY_CHECK(flaky_side_effect());
+    return 7;
+}
 
 void test_try_check_single_eval()
 {
@@ -155,8 +166,7 @@ void test_try_check_single_eval()
     auto r = call_flaky();
     CHECK(!r, "NN_TRY_CHECK 传播失败");
     CHECK(g_side_effects == 1, "NN_TRY_CHECK 失败路径只求值一次 x");
-    CHECK(!r && r.error().message == "first call fails",
-          "NN_TRY_CHECK 用第一次求值的错误");
+    CHECK(!r && r.error().message == "first call fails", "NN_TRY_CHECK 用第一次求值的错误");
 
     g_side_effects = 1;   // 下一次调用直接成功
     auto r2 = call_flaky();
@@ -191,16 +201,13 @@ int normalize_rc(int rc)
 void test_termination()
 {
     const int aborted = normalize_rc(run_self("--expect-abort"));
-    if (aborted != kSkip)
-        CHECK(aborted != 0, "NN_UNWRAP 失败 → 非零退出（abort）");
+    if (aborted != kSkip) CHECK(aborted != 0, "NN_UNWRAP 失败 → 非零退出（abort）");
 
     const int rc3 = normalize_rc(run_self("--expect-exit 3"));
-    if (rc3 != kSkip)
-        CHECK(rc3 == 3, "NN_EXIT(x, 3) → 退出码 3");
+    if (rc3 != kSkip) CHECK(rc3 == 3, "NN_EXIT(x, 3) → 退出码 3");
 
     const int rc7 = normalize_rc(run_self("--expect-exit 7"));
-    if (rc7 != kSkip)
-        CHECK(rc7 == 7, "NN_EXIT(x, 7, msg) → 退出码 7（带语境形态）");
+    if (rc7 != kSkip) CHECK(rc7 == 7, "NN_EXIT(x, 7, msg) → 退出码 7（带语境形态）");
 }
 
 } // namespace
